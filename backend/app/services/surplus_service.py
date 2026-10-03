@@ -116,7 +116,7 @@ class SurplusService:
                 redistribution_eligible=True,
                 detection_timestamp="09:30 IST",
                 reason_codes=["POST_SERVICE_TALLY", "DISPATCHED_TO_COURIER"],
-                variance_explanation="Morning surplus dispatched via green logistics partner.",
+                variance_explanation="Morning surplus dispatched via demonstration green logistics courier.",
                 is_demo_data=True,
             ),
         ]
@@ -136,6 +136,10 @@ class SurplusService:
         if status:
             results = [r for r in results if r.status == status]
         return results
+
+    def get_active_surplus(self) -> list[SurplusRecordResponse]:
+        """Return all active non-composted surplus inventory."""
+        return [r for r in self._demo_records if r.status != SurplusStatus.COMPOSTED]
 
     def get_surplus_by_id(self, surplus_id: str) -> SurplusRecordResponse | None:
         """Find a single surplus item by unique identifier."""

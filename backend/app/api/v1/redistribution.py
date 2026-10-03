@@ -20,6 +20,23 @@ async def get_active_dispatches() -> list[RedistributionDispatchResponse]:
     return redistribution_service.get_all_dispatches()
 
 
+@router.get(
+    "/dispatches/{dispatch_id}",
+    response_model=RedistributionDispatchResponse,
+    summary="Get Dispatch by ID",
+    description="Retrieve logistics consignment details by tracking identifier.",
+)
+async def get_dispatch_by_id(dispatch_id: str) -> RedistributionDispatchResponse:
+    """Retrieve single consignment details."""
+    d = redistribution_service.get_dispatch_by_id(dispatch_id)
+    if not d:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Dispatch '{dispatch_id}' not found.",
+        )
+    return d
+
+
 @router.post(
     "/verify-otp",
     summary="Verify Handover Token",

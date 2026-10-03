@@ -164,17 +164,22 @@ export interface SafetyVerificationPayload {
 }
 
 export type OrgType =
-  | 'Shelter Home'
+  | 'NGO'
   | 'Community Kitchen'
+  | 'Shelter'
+  | 'Shelter Home'
+  | 'Food Distribution Center'
   | 'Night Shelter'
   | 'Children Home'
   | 'Elderly Care Center';
 
 export interface RecipientMatch {
   id: string;
+  matchId?: string;
   surplusId: string;
   dishName: string;
   portionsAvailable: number;
+  recipientId?: string;
   recipientName: string;
   orgType: OrgType;
   distanceKm: number;
@@ -182,20 +187,36 @@ export interface RecipientMatch {
   capacityNeededPortions: number;
   dietaryCompatibility: string;
   priorityScore: number; // 0 to 100
+  matchScore?: number;
   urgencyLevel: 'Immediate' | 'Priority' | 'Flexible';
-  matchStatus: 'Suggested' | 'Accepted' | 'Driver Assigned' | 'Completed';
+  matchStatus: 'Suggested' | 'Accepted' | 'Driver Assigned' | 'Pickup In Progress' | 'Completed' | 'Cancelled';
+  eligibility?: boolean;
+  reasons?: string[];
+  rank?: number;
+  estimatedPickupTime?: string | null;
+  scoringBreakdown?: Record<string, number>;
+  isDemoData?: boolean;
 }
 
 export type DispatchStage =
+  | 'Matched'
   | 'Allocated'
+  | 'Driver Assigned'
   | 'Driver En Route'
+  | 'Pickup In Progress'
   | 'Picked Up'
   | 'In Transit'
   | 'Delivered'
-  | 'Verified Handoff';
+  | 'OTP Verified'
+  | 'Verified Handoff'
+  | 'Redistributed'
+  | 'Cancelled';
 
 export interface RedistributionDispatch {
   dispatchId: string;
+  matchId?: string;
+  surplusId?: string;
+  recipientId?: string;
   surplusSummary: string;
   portions: number;
   recipientName: string;
@@ -209,6 +230,8 @@ export interface RedistributionDispatch {
   transitTempC: number;
   handoverCode: string;
   isVerified: boolean;
+  verificationTimestamp?: string | null;
+  isDemoData?: boolean;
 }
 
 export interface ImpactSummary {

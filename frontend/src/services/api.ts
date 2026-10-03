@@ -365,16 +365,21 @@ export async function verifySafety(
 /**
  * Fetch candidate beneficiary matches from FastAPI /api/v1/matching/suggested
  */
-export async function getRecipientMatches(): Promise<RecipientMatch[]> {
+export async function getRecipientMatches(surplusId?: string): Promise<RecipientMatch[]> {
   try {
-    const res = await fetch(`${API_BASE_URL}/api/v1/matching/suggested`);
+    const url = surplusId
+      ? `${API_BASE_URL}/api/v1/matching/suggested?surplus_id=${encodeURIComponent(surplusId)}`
+      : `${API_BASE_URL}/api/v1/matching/suggested`;
+    const res = await fetch(url);
     if (!res.ok) throw new Error(`HTTP error ${res.status}`);
     const data = await res.json();
     return data.map((m: any) => ({
       id: m.id,
+      matchId: m.match_id || m.id,
       surplusId: m.surplus_id,
       dishName: m.dish_name,
       portionsAvailable: m.portions_available,
+      recipientId: m.recipient_id || 'REC-DEMO-01',
       recipientName: m.recipient_name,
       orgType: m.org_type,
       distanceKm: m.distance_km,
@@ -382,13 +387,68 @@ export async function getRecipientMatches(): Promise<RecipientMatch[]> {
       capacityNeededPortions: m.capacity_needed_portions,
       dietaryCompatibility: m.dietary_compatibility,
       priorityScore: m.priority_score,
+      matchScore: m.match_score ?? m.priority_score,
       urgencyLevel: m.urgency_level,
       matchStatus: m.match_status,
+      eligibility: m.eligibility ?? true,
+      reasons: m.reasons || [],
+      rank: m.rank ?? 1,
+      estimatedPickupTime: m.estimated_pickup_time,
+      scoringBreakdown: m.scoring_breakdown,
+      isDemoData: m.is_demo_data ?? true,
     }));
   } catch (error) {
     console.warn('Using local demonstration fallback for matches:', error);
     return DEMO_RECIPIENT_MATCHES;
   }
+}
+
+/**
+ * Accept a suggested match and trigger driver assignment via POST /api/v1/matching/{match_id}/accept
+ */
+export async function acceptRecipientMatch(matchId: string): Promise<RecipientMatch> {
+  const res = await fetch(`${API_BASE_URL}/api/v1/matching/${encodeURIComponent(matchId)}/accept`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+  });
+
+  if (!res.ok) {
+    const errorDetails = await res.json().catch(() => ({}));
+    const message =
+      errorDetails?.detail?.[0]?.msg ||
+      errorDetails?.detail ||
+      `Failed to accept match candidate (HTTP ${res.status})`;
+    throw new Error(message);
+  }
+
+  const m = await res.json();
+  return {
+    id: m.id,
+    matchId: m.match_id || m.id,
+    surplusId: m.surplus_id,
+    dishName: m.dish_name,
+    portionsAvailable: m.portions_available,
+    recipientId: m.recipient_id,
+    recipientName: m.recipient_name,
+    orgType: m.org_type,
+    distanceKm: m.distance_km,
+    transitMinutes: m.transit_minutes,
+    capacityNeededPortions: m.capacity_needed_portions,
+    dietaryCompatibility: m.dietary_compatibility,
+    priorityScore: m.priority_score,
+    matchScore: m.match_score ?? m.priority_score,
+    urgencyLevel: m.urgency_level,
+    matchStatus: m.match_status,
+    eligibility: m.eligibility ?? true,
+    reasons: m.reasons || [],
+    rank: m.rank ?? 1,
+    estimatedPickupTime: m.estimated_pickup_time,
+    scoringBreakdown: m.scoring_breakdown,
+    isDemoData: m.is_demo_data ?? true,
+  };
 }
 
 /**
@@ -401,6 +461,9 @@ export async function getRedistributionDispatches(): Promise<RedistributionDispa
     const data = await res.json();
     return data.map((d: any) => ({
       dispatchId: d.dispatch_id,
+      matchId: d.match_id,
+      surplusId: d.surplus_id,
+      recipientId: d.recipient_id,
       surplusSummary: d.surplus_summary,
       portions: d.portions,
       recipientName: d.recipient_name,
@@ -414,11 +477,48 @@ export async function getRedistributionDispatches(): Promise<RedistributionDispa
       transitTempC: d.transit_temp_c,
       handoverCode: d.handover_code,
       isVerified: d.is_verified,
+      verificationTimestamp: d.verification_timestamp,
+      isDemoData: d.is_demo_data ?? true,
     }));
   } catch (error) {
     console.warn('Using local demonstration fallback for dispatches:', error);
     return DEMO_REDISTRIBUTION_DISPATCHES;
   }
+}
+
+/**
+ * Submit demo handover OTP code for custody confirmation via POST /api/v1/redistribution/verify-otp
+ */
+export async function verifyHandoverOtp(
+  dispatchId: string,
+  otpCode: string
+): Promise<{ success: boolean; message: string }> {
+  const res = await fetch(`${API_BASE_URL}/api/v1/redistribution/verify-otp`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify({
+      dispatch_id: dispatchId,
+      otp_code: otpCode,
+    }),
+  });
+
+  if (!res.ok) {
+    const errorDetails = await res.json().catch(() => ({}));
+    const message =
+      errorDetails?.detail?.[0]?.msg ||
+      errorDetails?.detail ||
+      `OTP verification failed with status: ${res.status}`;
+    throw new Error(message);
+  }
+
+  const data = await res.json();
+  return {
+    success: data.status === 'success',
+    message: data.message,
+  };
 }
 
 /**
