@@ -1,6 +1,11 @@
 """Surplus Inventory API routes for FoodLoop AI."""
 from fastapi import APIRouter, HTTPException, Query, status
-from app.schemas.surplus import SurplusCategory, SurplusStatus, SurplusRecordResponse
+from app.schemas.surplus import (
+    SurplusCategory,
+    SurplusStatus,
+    SurplusRecordResponse,
+    SurplusDetectionInput,
+)
 from app.services.surplus_service import surplus_service
 
 router = APIRouter(prefix="/surplus", tags=["Surplus Inventory"])
@@ -40,3 +45,18 @@ async def get_surplus_detail(surplus_id: str) -> SurplusRecordResponse:
             detail=f"Surplus item '{surplus_id}' not found.",
         )
     return item
+
+
+@router.post(
+    "/detect",
+    response_model=SurplusRecordResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Log & Detect Surplus Remnant",
+    description="Calculate post-service surplus portions, weight in kg, holding window, and enforce food safety gate.",
+)
+async def detect_and_log_surplus(
+    data: SurplusDetectionInput,
+) -> SurplusRecordResponse:
+    """Record newly detected kitchen remnant and determine holding parameters."""
+    return surplus_service.detect_surplus(data)
+

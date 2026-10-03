@@ -1,6 +1,6 @@
 """Safety service layer for FoodLoop AI.
 
-Implements FSSAI Schedule 4 safety evaluations, hold-time checks, and verification certificates.
+Implements FSSAI Schedule 4 safety evaluations, operational holding limits, and internal verification audit tokens.
 """
 
 from app.schemas.safety import (
@@ -9,10 +9,12 @@ from app.schemas.safety import (
     SafetyVerificationInput,
     SafetyVerificationRecordResponse,
 )
+from app.services.safety_engine import safety_engine
+from app.services.surplus_service import surplus_service
 
 
 class SafetyService:
-    """Service evaluating food safety parameters and issuing digital certificates."""
+    """Service evaluating food safety parameters and issuing FoodLoop internal audit tokens."""
 
     def __init__(self):
         self._demo_records: list[SafetyVerificationRecordResponse] = [
@@ -33,8 +35,16 @@ class SafetyService:
                     texture_normal=True,
                     sanitary_vessel=True,
                 ),
-                compliance_status=ComplianceGrade.CERTIFIED_SAFE,
-                inspector_name="Chef Rajesh Sharma (FSSAI Cert #9942)",
+                compliance_status=ComplianceGrade.VERIFIED_SAFE,
+                redistribution_eligible=True,
+                regulatory_basis="FSS (Licensing & Registration of Food Businesses) Reg. 2011, Schedule 4",
+                operational_rule="Standard 4.0-hour holding ceiling from batch cooking finish",
+                reason_codes=["FSSAI_HOT_HOLD_MET", "SENSORY_ATTRIBUTES_SOUND", "VERIFIED_SAFE_FOR_REDISTRIBUTION"],
+                observations=[
+                    "Core probe 66.2°C meets FSSAI Schedule 4 hot holding minimum (≥60.0°C).",
+                    "Sensory attributes clean and packaging sealed.",
+                ],
+                inspector_name="Chef Rajesh Sharma (Food Safety Supervisor)",
                 digital_certificate_id="FSSAI-FL-2026-0921-OK",
                 fssai_regulation="FSS (Licensing & Registration of Food Businesses) Reg. 2011, Schedule 4",
                 is_demo_data=True,
@@ -56,8 +66,16 @@ class SafetyService:
                     texture_normal=True,
                     sanitary_vessel=True,
                 ),
-                compliance_status=ComplianceGrade.CERTIFIED_SAFE,
-                inspector_name="Chef Rajesh Sharma (FSSAI Cert #9942)",
+                compliance_status=ComplianceGrade.VERIFIED_SAFE,
+                redistribution_eligible=True,
+                regulatory_basis="FSS (Licensing & Registration of Food Businesses) Reg. 2011, Schedule 4",
+                operational_rule="Standard 4.0-hour holding ceiling from batch cooking finish",
+                reason_codes=["FSSAI_HOT_HOLD_MET", "SENSORY_ATTRIBUTES_SOUND", "VERIFIED_SAFE_FOR_REDISTRIBUTION"],
+                observations=[
+                    "Core probe 64.0°C meets FSSAI hot hold standard.",
+                    "Hygienic stainless vessel verified clean.",
+                ],
+                inspector_name="Chef Rajesh Sharma (Food Safety Supervisor)",
                 digital_certificate_id="FSSAI-FL-2026-0922-OK",
                 fssai_regulation="FSS (Licensing & Registration of Food Businesses) Reg. 2011, Schedule 4",
                 is_demo_data=True,
@@ -80,58 +98,52 @@ class SafetyService:
                     sanitary_vessel=True,
                 ),
                 compliance_status=ComplianceGrade.ATTENTION_REQUIRED,
+                redistribution_eligible=False,
+                regulatory_basis="FSS (Licensing & Registration of Food Businesses) Reg. 2011, Schedule 4",
+                operational_rule="2.0-hour ambient corrective window applies when below 60.0°C",
+                reason_codes=["CORE_TEMP_BELOW_HOT_HOLD_LIMIT", "CORRECTIVE_ACTION_REQUIRED"],
+                observations=[
+                    "Core probe 58.0°C dropped below 60.0°C threshold.",
+                    "Sensory inspection passed, but immediate thermal re-heating or hot-case holding is required.",
+                ],
                 inspector_name="Quality Lead Sunita Roy",
-                digital_certificate_id="FSSAI-FL-2026-0923-PENDING",
+                digital_certificate_id=None,
                 fssai_regulation="Notice: Core temp dropped below 60°C. Immediate thermal transfer required.",
                 is_demo_data=True,
             ),
         ]
 
     def get_all_records(self) -> list[SafetyVerificationRecordResponse]:
-        """Return all logged verification certificates."""
+        """Return all logged verification audit records."""
         return self._demo_records
 
-    def verify_surplus(self, data: SafetyVerificationInput) -> SafetyVerificationRecordResponse:
-        """Evaluate temperature and sensory attributes to determine compliance."""
-        is_temp_ok = data.core_temp_c >= 60.0
-        sensory_ok = (
-            data.sensory_inspection.odor_normal
-            and data.sensory_inspection.color_normal
-            and data.sensory_inspection.texture_normal
-            and data.sensory_inspection.sanitary_vessel
+    def verify_surplus(
+        self, data: SafetyVerificationInput
+    ) -> SafetyVerificationRecordResponse:
+        """Evaluate temperature and sensory attributes against FSSAI standards."""
+        # Find dish metadata from surplus registry if available
+        surplus_item = surplus_service.get_surplus_by_id(data.surplus_id)
+        dish_name = surplus_item.dish_name if surplus_item else "Surplus Meal Batch"
+        batch_code = surplus_item.batch_id if surplus_item else f"B-SUR-{data.surplus_id[-4:]}"
+
+        # Execute formal safety evaluation engine
+        result = safety_engine.evaluate(
+            data=data,
+            dish_name=dish_name,
+            batch_code=batch_code,
         )
 
-        if is_temp_ok and sensory_ok:
-            status = ComplianceGrade.CERTIFIED_SAFE
-            reg = "FSS (Licensing & Registration) Reg. 2011 Schedule 4 — Certified Safe"
-        elif not is_temp_ok and sensory_ok:
-            status = ComplianceGrade.ATTENTION_REQUIRED
-            reg = "Notice: Core temp dropped below 60°C. Thermal re-heat or insulated transfer required."
-        else:
-            status = ComplianceGrade.NON_COMPLIANT_DISCARD
-            reg = "Critical Safety Violation: Sensory or vessel defect detected. Direct to organic compost."
-
-        record = SafetyVerificationRecordResponse(
-            id=f"SAFE-REC-{len(self._demo_records) + 401}",
+        # Synchronize status with surplus registry
+        surplus_service.mark_safety_result(
             surplus_id=data.surplus_id,
-            batch_code=f"B-VERIFY-{data.surplus_id[:6]}",
-            dish_name="Verified Surplus Batch",
-            inspection_timestamp="Just now",
-            core_temp_c=data.core_temp_c,
-            temp_standard="≥ 60.0°C (Hot Holding)",
-            is_temp_compliant=is_temp_ok,
-            hold_time_elapsed_hours=1.0,
-            max_safe_hold_hours=4.0,
-            sensory_inspection=data.sensory_inspection,
-            compliance_status=status,
-            inspector_name=data.inspector_name,
-            digital_certificate_id=f"FSSAI-FL-2026-{data.surplus_id[:6]}-OK",
-            fssai_regulation=reg,
-            is_demo_data=True,
+            is_safe=result.redistribution_eligible,
+            is_discard=(result.compliance_status == ComplianceGrade.NON_COMPLIANT_DISCARD),
         )
 
-        self._demo_records.append(record)
-        return record
+        # Store in verification ledger
+        self._demo_records.insert(0, result)
+        return result
 
 
 safety_service = SafetyService()
+

@@ -51,7 +51,7 @@ const STAGES: StageConfig[] = [
     name: 'Safety Verification',
     subtitle: 'Temp Probe & FSSAI Standards',
     icon: ShieldCheck,
-    telemetrySummary: '95 Portions Certified Safe',
+    telemetrySummary: '95 Portions Verified Safe',
   },
   {
     id: 'matching',

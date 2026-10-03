@@ -1,6 +1,12 @@
 """Surplus service layer for FoodLoop AI."""
-from app.schemas.surplus import SurplusCategory, SurplusStatus, SurplusRecordResponse
+from app.schemas.surplus import (
+    SurplusCategory,
+    SurplusStatus,
+    SurplusRecordResponse,
+    SurplusDetectionInput,
+)
 from app.schemas.menu import MealSlot
+from app.services.surplus_engine import surplus_engine
 
 
 class SurplusService:
@@ -22,6 +28,11 @@ class SurplusService:
                 status=SurplusStatus.VERIFIED_SAFE,
                 storage_unit="Insulated Hot-Holding Cabinet #1",
                 shelf_life_remaining_hours=2.2,
+                requires_safety_verification=True,
+                redistribution_eligible=True,
+                detection_timestamp="13:15 IST",
+                reason_codes=["POST_SERVICE_TALLY", "HOT_HOLD_STANDARD_MET", "SAFETY_INSPECTION_PASSED"],
+                variance_explanation="60 portions unconsumed from planned 550. Verified above 60°C.",
                 is_demo_data=True,
             ),
             SurplusRecordResponse(
@@ -38,6 +49,11 @@ class SurplusService:
                 status=SurplusStatus.VERIFIED_SAFE,
                 storage_unit="Insulated Hot-Holding Cabinet #2",
                 shelf_life_remaining_hours=2.5,
+                requires_safety_verification=True,
+                redistribution_eligible=True,
+                detection_timestamp="13:15 IST",
+                reason_codes=["POST_SERVICE_TALLY", "HOT_HOLD_STANDARD_MET", "SAFETY_INSPECTION_PASSED"],
+                variance_explanation="45 portions unconsumed. Maintained at 64°C in thermal holding.",
                 is_demo_data=True,
             ),
             SurplusRecordResponse(
@@ -54,6 +70,11 @@ class SurplusService:
                 status=SurplusStatus.PENDING_VERIFICATION,
                 storage_unit="Thermal Insulation Crate #4",
                 shelf_life_remaining_hours=1.8,
+                requires_safety_verification=True,
+                redistribution_eligible=False,
+                detection_timestamp="13:30 IST",
+                reason_codes=["POST_SERVICE_TALLY", "TEMPERATURE_BELOW_HOT_HOLD", "MANDATORY_SAFETY_CHECK_REQUIRED"],
+                variance_explanation="50 portions logged. Core temp 58°C is below 60°C hot holding threshold. Pending thermal re-check.",
                 is_demo_data=True,
             ),
             SurplusRecordResponse(
@@ -70,6 +91,11 @@ class SurplusService:
                 status=SurplusStatus.MATCHED,
                 storage_unit="Stainless Steel Insulated Container #3",
                 shelf_life_remaining_hours=2.1,
+                requires_safety_verification=True,
+                redistribution_eligible=True,
+                detection_timestamp="13:10 IST",
+                reason_codes=["POST_SERVICE_TALLY", "HOT_HOLD_STANDARD_MET", "MATCHED_TO_RECIPIENT"],
+                variance_explanation="35 portions verified safe and matched to local shelter.",
                 is_demo_data=True,
             ),
             SurplusRecordResponse(
@@ -86,6 +112,11 @@ class SurplusService:
                 status=SurplusStatus.DISPATCHED,
                 storage_unit="Handoff Crate #2",
                 shelf_life_remaining_hours=0.5,
+                requires_safety_verification=True,
+                redistribution_eligible=True,
+                detection_timestamp="09:30 IST",
+                reason_codes=["POST_SERVICE_TALLY", "DISPATCHED_TO_COURIER"],
+                variance_explanation="Morning surplus dispatched via green logistics partner.",
                 is_demo_data=True,
             ),
         ]
@@ -113,13 +144,48 @@ class SurplusService:
                 return r
         return None
 
-    def update_status(self, surplus_id: str, new_status: SurplusStatus) -> SurplusRecordResponse | None:
+    def detect_surplus(self, data: SurplusDetectionInput) -> SurplusRecordResponse:
+        """Execute explainable surplus detection and record newly logged remnant."""
+        record = surplus_engine.detect_surplus(data)
+        # Prepend so the newest detected remnant appears first
+        self._demo_records.insert(0, record)
+        return record
+
+    def update_status(
+        self, surplus_id: str, new_status: SurplusStatus
+    ) -> SurplusRecordResponse | None:
         """Update operational status for a surplus batch."""
         for r in self._demo_records:
             if r.id == surplus_id:
                 r.status = new_status
+                if new_status == SurplusStatus.VERIFIED_SAFE:
+                    r.redistribution_eligible = True
+                elif new_status in (SurplusStatus.PENDING_VERIFICATION, SurplusStatus.COMPOSTED):
+                    r.redistribution_eligible = False
+                return r
+        return None
+
+    def mark_safety_result(
+        self,
+        surplus_id: str,
+        is_safe: bool,
+        is_discard: bool = False,
+    ) -> SurplusRecordResponse | None:
+        """Update surplus holding and eligibility based on formal food safety outcome."""
+        for r in self._demo_records:
+            if r.id == surplus_id:
+                if is_safe:
+                    r.status = SurplusStatus.VERIFIED_SAFE
+                    r.redistribution_eligible = True
+                elif is_discard:
+                    r.status = SurplusStatus.COMPOSTED
+                    r.redistribution_eligible = False
+                else:
+                    r.status = SurplusStatus.PENDING_VERIFICATION
+                    r.redistribution_eligible = False
                 return r
         return None
 
 
 surplus_service = SurplusService()
+

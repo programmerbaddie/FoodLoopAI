@@ -2,7 +2,9 @@ import {
   TodayOverviewMetrics,
   DemandPredictionItem,
   SurplusItem,
+  SurplusDetectionPayload,
   SafetyVerificationRecord,
+  SafetyVerificationPayload,
   RecipientMatch,
   RedistributionDispatch,
   ImpactSummary,
@@ -153,6 +155,9 @@ export async function predictDemandAdHoc(
 /**
  * Fetch active surplus inventory from FastAPI /api/v1/surplus/active
  */
+/**
+ * Fetch active surplus inventory from FastAPI /api/v1/surplus/active
+ */
 export async function getActiveSurplus(): Promise<SurplusItem[]> {
   try {
     const res = await fetch(`${API_BASE_URL}/api/v1/surplus/active`);
@@ -171,11 +176,93 @@ export async function getActiveSurplus(): Promise<SurplusItem[]> {
       status: s.status,
       storageUnit: s.storage_unit,
       shelfLifeRemainingHours: s.shelf_life_remaining_hours,
+      requiresSafetyVerification: s.requires_safety_verification ?? true,
+      redistributionEligible: s.redistribution_eligible ?? false,
+      detectionTimestamp: s.detection_timestamp,
+      reasonCodes: s.reason_codes || [],
+      varianceExplanation: s.variance_explanation || '',
+      isDemoData: s.is_demo_data ?? true,
     }));
   } catch (error) {
     console.warn('Using local demonstration fallback for surplus:', error);
     return DEMO_SURPLUS_ITEMS;
   }
+}
+
+/**
+ * Fetch a single surplus batch by ID from FastAPI /api/v1/surplus/{surplus_id}
+ */
+export async function getSurplusById(surplusId: string): Promise<SurplusItem> {
+  const res = await fetch(`${API_BASE_URL}/api/v1/surplus/${surplusId}`);
+  if (!res.ok) throw new Error(`Surplus batch not found: ${res.status}`);
+  const s = await res.json();
+  return {
+    id: s.id,
+    batchId: s.batch_id,
+    mealSlot: s.meal_slot,
+    dishName: s.dish_name,
+    category: s.category,
+    quantityKg: s.quantity_kg,
+    portionsEquivalent: s.portions_equivalent,
+    prepTimestamp: s.prep_timestamp,
+    holdingTempC: s.holding_temp_c,
+    status: s.status,
+    storageUnit: s.storage_unit,
+    shelfLifeRemainingHours: s.shelf_life_remaining_hours,
+    requiresSafetyVerification: s.requires_safety_verification ?? true,
+    redistributionEligible: s.redistribution_eligible ?? false,
+    detectionTimestamp: s.detection_timestamp,
+    reasonCodes: s.reason_codes || [],
+    varianceExplanation: s.variance_explanation || '',
+    isDemoData: s.is_demo_data ?? false,
+  };
+}
+
+/**
+ * Log and detect surplus remnant via POST /api/v1/surplus/detect
+ */
+export async function detectSurplus(
+  payload: SurplusDetectionPayload
+): Promise<SurplusItem> {
+  const res = await fetch(`${API_BASE_URL}/api/v1/surplus/detect`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) {
+    const errorDetails = await res.json().catch(() => ({}));
+    const message =
+      errorDetails?.detail?.[0]?.msg ||
+      errorDetails?.detail ||
+      `Surplus detection failed with status: ${res.status}`;
+    throw new Error(message);
+  }
+
+  const s = await res.json();
+  return {
+    id: s.id,
+    batchId: s.batch_id,
+    mealSlot: s.meal_slot,
+    dishName: s.dish_name,
+    category: s.category,
+    quantityKg: s.quantity_kg,
+    portionsEquivalent: s.portions_equivalent,
+    prepTimestamp: s.prep_timestamp,
+    holdingTempC: s.holding_temp_c,
+    status: s.status,
+    storageUnit: s.storage_unit,
+    shelfLifeRemainingHours: s.shelf_life_remaining_hours,
+    requiresSafetyVerification: s.requires_safety_verification ?? true,
+    redistributionEligible: s.redistribution_eligible ?? false,
+    detectionTimestamp: s.detection_timestamp,
+    reasonCodes: s.reason_codes || [],
+    varianceExplanation: s.variance_explanation || '',
+    isDemoData: s.is_demo_data ?? false,
+  };
 }
 
 /**
@@ -204,14 +291,75 @@ export async function getSafetyRecords(): Promise<SafetyVerificationRecord[]> {
         sanitaryVessel: r.sensory_inspection.sanitary_vessel,
       },
       complianceStatus: r.compliance_status,
+      redistributionEligible: r.redistribution_eligible ?? (r.compliance_status === 'Verified Safe'),
+      regulatoryBasis: r.regulatory_basis || 'FSSAI Schedule 4',
+      operationalRule: r.operational_rule || '4.0h Safe Hold Ceiling',
+      reasonCodes: r.reason_codes || [],
+      observations: r.observations || [],
       inspectorName: r.inspector_name,
       digitalCertificateId: r.digital_certificate_id,
       fssaiRegulation: r.fssai_regulation,
+      isDemoData: r.is_demo_data ?? true,
     }));
   } catch (error) {
     console.warn('Using local demonstration fallback for safety records:', error);
     return DEMO_SAFETY_RECORDS;
   }
+}
+
+/**
+ * Submit safety verification sign-off via POST /api/v1/safety/verify
+ */
+export async function verifySafety(
+  payload: SafetyVerificationPayload
+): Promise<SafetyVerificationRecord> {
+  const res = await fetch(`${API_BASE_URL}/api/v1/safety/verify`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) {
+    const errorDetails = await res.json().catch(() => ({}));
+    const message =
+      errorDetails?.detail?.[0]?.msg ||
+      errorDetails?.detail ||
+      `Safety verification failed with status: ${res.status}`;
+    throw new Error(message);
+  }
+
+  const r = await res.json();
+  return {
+    id: r.id,
+    surplusId: r.surplus_id,
+    dishName: r.dish_name,
+    batchCode: r.batch_code,
+    inspectionTimestamp: r.inspection_timestamp,
+    coreTempC: r.core_temp_c,
+    tempStandard: r.temp_standard,
+    isTempCompliant: r.is_temp_compliant,
+    holdTimeElapsedHours: r.hold_time_elapsed_hours,
+    maxSafeHoldHours: r.max_safe_hold_hours,
+    sensoryInspection: {
+      odorNormal: r.sensory_inspection.odor_normal,
+      colorNormal: r.sensory_inspection.color_normal,
+      textureNormal: r.sensory_inspection.texture_normal,
+      sanitaryVessel: r.sensory_inspection.sanitary_vessel,
+    },
+    complianceStatus: r.compliance_status,
+    redistributionEligible: r.redistribution_eligible ?? (r.compliance_status === 'Verified Safe'),
+    regulatoryBasis: r.regulatory_basis,
+    operationalRule: r.operational_rule,
+    reasonCodes: r.reason_codes || [],
+    observations: r.observations || [],
+    inspectorName: r.inspector_name,
+    digitalCertificateId: r.digital_certificate_id,
+    fssaiRegulation: r.fssai_regulation,
+    isDemoData: r.is_demo_data ?? false,
+  };
 }
 
 /**

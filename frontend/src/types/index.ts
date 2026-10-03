@@ -80,7 +80,7 @@ export type SurplusStatus =
 export interface SurplusItem {
   id: string;
   batchId: string;
-  mealSlot: 'Breakfast' | 'Lunch' | 'Dinner' | 'Snacks';
+  mealSlot: 'Breakfast' | 'Lunch' | 'Dinner' | 'Evening Snacks' | 'Snacks';
   dishName: string;
   category: SurplusCategory;
   quantityKg: number;
@@ -90,10 +90,31 @@ export interface SurplusItem {
   status: SurplusStatus;
   storageUnit: string;
   shelfLifeRemainingHours: number;
+  requiresSafetyVerification?: boolean;
+  redistributionEligible?: boolean;
+  detectionTimestamp?: string;
+  reasonCodes?: string[];
+  varianceExplanation?: string;
+  isDemoData?: boolean;
+}
+
+export interface SurplusDetectionPayload {
+  kitchen_id?: string;
+  meal_slot: 'Breakfast' | 'Lunch' | 'Dinner' | 'Evening Snacks';
+  dish_name: string;
+  category: SurplusCategory;
+  planned_portions: number;
+  cooked_portions: number;
+  consumed_portions: number;
+  cooked_weight_kg?: number;
+  remaining_weight_kg?: number;
+  prep_timestamp: string;
+  holding_temp_c: number;
+  storage_unit?: string;
 }
 
 export type ComplianceGrade =
-  | 'Certified Safe'
+  | 'Verified Safe'
   | 'Attention Required'
   | 'Non-Compliant (Discard)';
 
@@ -103,7 +124,7 @@ export interface SafetyVerificationRecord {
   dishName: string;
   batchCode: string;
   inspectionTimestamp: string;
-  coreTempC: number;
+  coreTempC?: number | null;
   tempStandard: string;
   isTempCompliant: boolean;
   holdTimeElapsedHours: number;
@@ -115,9 +136,31 @@ export interface SafetyVerificationRecord {
     sanitaryVessel: boolean;
   };
   complianceStatus: ComplianceGrade;
+  redistributionEligible?: boolean;
+  regulatoryBasis?: string;
+  operationalRule?: string;
+  reasonCodes?: string[];
+  observations?: string[];
   inspectorName: string;
-  digitalCertificateId: string;
+  digitalCertificateId?: string | null;
   fssaiRegulation: string;
+  isDemoData?: boolean;
+}
+
+export interface SafetyVerificationPayload {
+  surplus_id: string;
+  core_temp_c?: number | null;
+  holding_type?: 'Hot Holding' | 'Cold Holding' | 'Room Temperature / Ambient';
+  hold_time_elapsed_hours?: number;
+  sensory_inspection: {
+    odor_normal: boolean;
+    color_normal: boolean;
+    texture_normal: boolean;
+    sanitary_vessel: boolean;
+  };
+  packaging_sealed?: boolean;
+  inspector_name: string;
+  inspector_notes?: string;
 }
 
 export type OrgType =
