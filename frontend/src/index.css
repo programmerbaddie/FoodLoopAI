@@ -1,0 +1,19 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background-color: #F8FAFC;
+  color: #0F1E36;
+}
+
+/* Tabular figures for operational metrics and codes */
+.tabular-numbers {
+  font-variant-numeric: tabular-nums;
+}
