@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Utensils,
   TrendingDown,
@@ -11,14 +11,14 @@ import {
   Building,
   ExternalLink,
 } from 'lucide-react';
-import { NavTabId } from '../types';
+import { NavTabId, TodayOverviewMetrics } from '../types';
 import {
   DEMO_OVERVIEW_METRICS,
   DEMO_FACILITY,
   DEMO_DEMAND_PREDICTIONS,
   DEMO_REDISTRIBUTION_DISPATCHES,
 } from '../data/mockData';
-import { HealthStatus } from '../services/api';
+import { HealthStatus, getTodayOverview } from '../services/api';
 import { MetricCard } from '../components/ui/MetricCard';
 import { SectionHeader } from '../components/ui/SectionHeader';
 import { StatusBadge } from '../components/ui/StatusBadge';
@@ -37,7 +37,19 @@ export const OverviewPage: React.FC<OverviewPageProps> = ({
   loadingHealth,
   onRefreshHealth,
 }) => {
-  const m = DEMO_OVERVIEW_METRICS;
+  const [metrics, setMetrics] = useState<TodayOverviewMetrics>(DEMO_OVERVIEW_METRICS);
+
+  useEffect(() => {
+    let isMounted = true;
+    getTodayOverview().then((data) => {
+      if (isMounted) setMetrics(data);
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, [health]);
+
+  const m = metrics;
 
   return (
     <div className="space-y-6">
