@@ -84,20 +84,70 @@ export async function getDemandPredictions(): Promise<DemandPredictionItem[]> {
       mealSlot: d.meal_slot,
       plannedPortions: d.planned_portions,
       predictedPortions: d.predicted_portions,
+      recommendedPrepPortions: d.recommended_prep_portions,
       variancePortions: d.variance_portions,
       variancePct: d.variance_pct,
       attendanceProjected: d.attendance_projected,
       historicalBaselinePortions: d.historical_baseline_portions,
       menuHighlights: d.menu_highlights || [],
       keyDrivers: d.key_drivers || [],
+      reasonCodes: d.reason_codes || [],
       prepRecommendation: d.prep_recommendation,
       suggestedBatchReductionKg: d.suggested_batch_reduction_kg,
       riskSeverity: d.risk_severity,
+      confidenceLevel: d.confidence_level,
+      isDemoData: d.is_demo_data ?? true,
     }));
   } catch (error) {
     console.warn('Using local demonstration fallback for demand:', error);
     return DEMO_DEMAND_PREDICTIONS;
   }
+}
+
+/**
+ * Execute ad-hoc explainable demand prediction via POST /api/v1/demand/predict
+ */
+export async function predictDemandAdHoc(
+  payload: import('../types').DemandInputPayload
+): Promise<DemandPredictionItem> {
+  const res = await fetch(`${API_BASE_URL}/api/v1/demand/predict`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) {
+    const errorDetails = await res.json().catch(() => ({}));
+    const message =
+      errorDetails?.detail?.[0]?.msg ||
+      errorDetails?.detail ||
+      `Prediction failed with status: ${res.status}`;
+    throw new Error(message);
+  }
+
+  const d = await res.json();
+  return {
+    id: d.id,
+    mealSlot: d.meal_slot,
+    plannedPortions: d.planned_portions,
+    predictedPortions: d.predicted_portions,
+    recommendedPrepPortions: d.recommended_prep_portions,
+    variancePortions: d.variance_portions,
+    variancePct: d.variance_pct,
+    attendanceProjected: d.attendance_projected,
+    historicalBaselinePortions: d.historical_baseline_portions,
+    menuHighlights: d.menu_highlights || [],
+    keyDrivers: d.key_drivers || [],
+    reasonCodes: d.reason_codes || [],
+    prepRecommendation: d.prep_recommendation,
+    suggestedBatchReductionKg: d.suggested_batch_reduction_kg,
+    riskSeverity: d.risk_severity,
+    confidenceLevel: d.confidence_level,
+    isDemoData: d.is_demo_data ?? false,
+  };
 }
 
 /**

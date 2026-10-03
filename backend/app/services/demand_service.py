@@ -1,19 +1,24 @@
 """Demand service layer for FoodLoop AI.
 
-Provides structured demand forecasting data and variance calculation logic.
-In this phase, records are returned from structured institutional demonstration
-registries and clearly marked as demo data without claiming live AI model output.
+Provides structured demand forecasting data and connects to the explainable
+prediction engine. Separates mathematical baseline logic from API routers.
 """
 
-from app.schemas.demand import DemandInput, DemandPredictionResponse, RiskSeverity
+from app.schemas.demand import (
+    DemandInput,
+    DemandPredictionResponse,
+    RiskSeverity,
+    ConfidenceLevel,
+)
 from app.schemas.menu import MealSlot
+from app.services.demand_engine import demand_engine
 
 
 class DemandService:
     """Service handling institutional kitchen demand predictions and batch cuts."""
 
     def __init__(self):
-        # Structured institutional demonstration store
+        # Structured institutional demonstration store for the daily schedule
         self._demo_records: list[DemandPredictionResponse] = [
             DemandPredictionResponse(
                 id="DP-TODAY-01",
@@ -21,6 +26,7 @@ class DemandService:
                 meal_slot=MealSlot.BREAKFAST,
                 planned_portions=450,
                 predicted_portions=415,
+                recommended_prep_portions=432,
                 variance_portions=-35,
                 variance_pct=-7.8,
                 attendance_projected=520,
@@ -36,9 +42,11 @@ class DemandService:
                     "Normal mess swipe attendance trend",
                     "Weather: Clear sky, 24°C",
                 ],
+                reason_codes=["HISTORICAL_SLOT_BENCHMARK", "WEATHER_OPTIMAL"],
                 prep_recommendation="Standard batch prep completed with 20 portions buffer.",
                 suggested_batch_reduction_kg=8.5,
                 risk_severity=RiskSeverity.LOW,
+                confidence_level=ConfidenceLevel.MODERATE_SIGNAL,
                 is_demo_data=True,
             ),
             DemandPredictionResponse(
@@ -47,6 +55,7 @@ class DemandService:
                 meal_slot=MealSlot.LUNCH,
                 planned_portions=550,
                 predicted_portions=480,
+                recommended_prep_portions=499,
                 variance_portions=-70,
                 variance_pct=-12.7,
                 attendance_projected=580,
@@ -63,11 +72,17 @@ class DemandService:
                     "Estimated 65 students opting for external canteen meals",
                     "Historical Friday lunch decline: 11.2%",
                 ],
+                reason_codes=[
+                    "SYMPOSIUM_EXTERNAL_PROVISIONING",
+                    "WEEKEND_DEPARTURE_FACTOR",
+                    "HISTORICAL_SLOT_BENCHMARK",
+                ],
                 prep_recommendation=(
                     "Reduce 2nd batch grain preparation by 18 kg. Hold back 12 kg prepped vegetables until 13:00 headcount confirmation."
                 ),
                 suggested_batch_reduction_kg=18.0,
                 risk_severity=RiskSeverity.HIGH,
+                confidence_level=ConfidenceLevel.HIGH_SIGNAL,
                 is_demo_data=True,
             ),
             DemandPredictionResponse(
@@ -76,6 +91,7 @@ class DemandService:
                 meal_slot=MealSlot.SNACKS,
                 planned_portions=220,
                 predicted_portions=195,
+                recommended_prep_portions=203,
                 variance_portions=-25,
                 variance_pct=-11.4,
                 attendance_projected=310,
@@ -85,9 +101,11 @@ class DemandService:
                     "Cardamom Tea",
                 ],
                 key_drivers=["Inter-hostel sports tournament at main grounds"],
+                reason_codes=["SPORTS_SCHEDULE_SHIFT", "DEFAULT_SLOT_RATE"],
                 prep_recommendation="Bake in two staggered batches of 110 portions rather than a single large batch.",
                 suggested_batch_reduction_kg=6.0,
                 risk_severity=RiskSeverity.MODERATE,
+                confidence_level=ConfidenceLevel.MODERATE_SIGNAL,
                 is_demo_data=True,
             ),
             DemandPredictionResponse(
@@ -96,6 +114,7 @@ class DemandService:
                 meal_slot=MealSlot.DINNER,
                 planned_portions=530,
                 predicted_portions=460,
+                recommended_prep_portions=478,
                 variance_portions=-70,
                 variance_pct=-13.2,
                 attendance_projected=600,
@@ -111,56 +130,32 @@ class DemandService:
                     "Friday weekend home departure rate (~15% hostel check-out)",
                     "Student mess leave requests submitted on portal: 62 verified",
                 ],
+                reason_codes=[
+                    "CONFIRMED_PORTAL_LEAVES",
+                    "WEEKEND_DEPARTURE_FACTOR",
+                    "HISTORICAL_SLOT_BENCHMARK",
+                ],
                 prep_recommendation=(
                     "Cap initial gravy preparation at 420 portions. Cook backup rice batch only if 20:30 mess swipe threshold exceeds 350."
                 ),
                 suggested_batch_reduction_kg=22.5,
                 risk_severity=RiskSeverity.HIGH,
+                confidence_level=ConfidenceLevel.HIGH_SIGNAL,
                 is_demo_data=True,
             ),
         ]
 
-    def get_predictions_for_today(self, kitchen_id: str | None = None) -> list[DemandPredictionResponse]:
+    def get_predictions_for_today(
+        self, kitchen_id: str | None = None
+    ) -> list[DemandPredictionResponse]:
         """Return all scheduled demand predictions for today."""
         if kitchen_id:
             return [r for r in self._demo_records if r.kitchen_id == kitchen_id]
         return self._demo_records
 
-    def calculate_adhoc_forecast(self, data: DemandInput) -> DemandPredictionResponse:
-        """Calculate explainable forecast based on headcount and verified leaves."""
-        # Explainable heuristic baseline: assumes typical 12% opt-out plus explicit event deductions
-        opt_out_factor = 0.12
-        if data.special_events:
-            opt_out_factor += 0.05
-
-        predicted = int(data.registered_headcount * (1.0 - opt_out_factor))
-        variance = predicted - data.planned_portions
-        variance_pct = round((variance / data.planned_portions) * 100.0, 1)
-
-        # Average portion weight ~ 250 grams -> 0.25 kg per portion
-        reduction_kg = max(0.0, round(abs(variance) * 0.25, 1)) if variance < 0 else 0.0
-        severity = RiskSeverity.HIGH if abs(variance_pct) > 12 else (RiskSeverity.MODERATE if abs(variance_pct) > 5 else RiskSeverity.LOW)
-
-        return DemandPredictionResponse(
-            id=f"DP-CALC-{data.meal_slot.value.upper()[:3]}",
-            kitchen_id=data.kitchen_id,
-            meal_slot=data.meal_slot,
-            planned_portions=data.planned_portions,
-            predicted_portions=predicted,
-            variance_portions=variance,
-            variance_pct=variance_pct,
-            attendance_projected=data.registered_headcount,
-            historical_baseline_portions=int(data.registered_headcount * 0.9),
-            menu_highlights=["Batch Input Dish"],
-            key_drivers=[
-                f"Calculated from registered headcount of {data.registered_headcount}",
-                f"Events factored: {', '.join(data.special_events) if data.special_events else 'None'}",
-            ],
-            prep_recommendation=f"Recommended preparation target: {predicted} portions.",
-            suggested_batch_reduction_kg=reduction_kg,
-            risk_severity=severity,
-            is_demo_data=True,
-        )
+    def predict_demand(self, data: DemandInput) -> DemandPredictionResponse:
+        """Execute explainable demand prediction using the dedicated baseline engine."""
+        return demand_engine.predict(data)
 
 
 demand_service = DemandService()

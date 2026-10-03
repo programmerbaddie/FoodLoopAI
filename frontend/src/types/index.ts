@@ -34,15 +34,32 @@ export interface DemandPredictionItem {
   mealSlot: 'Breakfast' | 'Lunch' | 'Dinner' | 'Evening Snacks';
   plannedPortions: number;
   predictedPortions: number;
+  recommendedPrepPortions?: number;
   variancePortions: number;
   variancePct: number;
   attendanceProjected: number;
   historicalBaselinePortions: number;
   menuHighlights: string[];
   keyDrivers: string[];
+  reasonCodes?: string[];
   prepRecommendation: string;
   suggestedBatchReductionKg: number;
   riskSeverity: 'low' | 'moderate' | 'high';
+  confidenceLevel?: string;
+  isDemoData?: boolean;
+}
+
+export interface DemandInputPayload {
+  kitchen_id?: string;
+  meal_slot: 'Breakfast' | 'Lunch' | 'Dinner' | 'Evening Snacks';
+  plan_date: string;
+  registered_headcount: number;
+  planned_portions: number;
+  confirmed_leaves?: number;
+  historical_consumption_rate?: number | null;
+  day_of_week?: string | null;
+  special_events?: string[];
+  weather_context?: string | null;
 }
 
 export type SurplusCategory =
