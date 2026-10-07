@@ -28,7 +28,7 @@ app = FastAPI(
 # CORS middleware for frontend communication
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS,
+    allow_origins=settings.get_cors_origins(),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -50,6 +50,7 @@ async def root():
         "status": "online",
         "documentation": "/docs",
         "health_check": "/health",
+        "environment": settings.ENVIRONMENT,
         "loop_stages": [
             "PREDICT",
             "PREVENT",
@@ -57,5 +58,19 @@ async def root():
             "MATCH",
             "REDISTRIBUTE",
             "TRACK",
+            "LEARN",
         ],
     }
+
+
+if __name__ == "__main__":
+    import os
+    import uvicorn
+
+    port = int(os.environ.get("PORT", settings.PORT))
+    uvicorn.run(
+        "app.main:app",
+        host=settings.HOST,
+        port=port,
+        reload=settings.ENVIRONMENT == "development",
+    )

@@ -18,4 +18,5 @@ async def get_health() -> HealthCheckResponse:
         status="ok",
         service=settings.PROJECT_NAME,
         version=settings.VERSION,
+        environment=settings.ENVIRONMENT,
     )

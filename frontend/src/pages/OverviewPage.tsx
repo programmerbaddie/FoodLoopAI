@@ -18,7 +18,7 @@ import {
   DEMO_DEMAND_PREDICTIONS,
   DEMO_REDISTRIBUTION_DISPATCHES,
 } from '../data/mockData';
-import { HealthStatus, getTodayOverview } from '../services/api';
+import { HealthStatus, getTodayOverview, getApiDocsUrl } from '../services/api';
 import { MetricCard } from '../components/ui/MetricCard';
 import { SectionHeader } from '../components/ui/SectionHeader';
 import { StatusBadge } from '../components/ui/StatusBadge';
@@ -187,7 +187,7 @@ export const OverviewPage: React.FC<OverviewPageProps> = ({
           </div>
           <div className="border-t border-slate-100 pt-2 flex items-center justify-between text-[11px]">
             <a
-              href="http://127.0.0.1:8000/docs"
+              href={getApiDocsUrl()}
               target="_blank"
               rel="noopener noreferrer"
               className="text-foodloop-green hover:underline flex items-center gap-1 font-medium"
