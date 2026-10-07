@@ -8,6 +8,10 @@ import {
   RecipientMatch,
   RedistributionDispatch,
   ImpactSummary,
+  ImpactEvent,
+  DemandPerformanceSummary,
+  LearningSignal,
+  LearningFeedbackPayload,
 } from '../types';
 import {
   DEMO_OVERVIEW_METRICS,
@@ -17,6 +21,9 @@ import {
   DEMO_RECIPIENT_MATCHES,
   DEMO_REDISTRIBUTION_DISPATCHES,
   DEMO_IMPACT_SUMMARY,
+  DEMO_IMPACT_EVENTS,
+  DEMO_DEMAND_PERFORMANCE,
+  DEMO_LEARNING_SIGNALS,
 } from '../data/mockData';
 
 export interface HealthStatus {
@@ -536,6 +543,11 @@ export async function getImpactSummary(): Promise<ImpactSummary> {
       waterSavedLiters: data.water_saved_liters,
       beneficiaryCountServed: data.beneficiary_count_served,
       averageKitchenSurplusReductionPct: data.average_kitchen_surplus_reduction_pct,
+      surplusRatePct: data.surplus_rate_pct ?? 11.8,
+      rescueRatePct: data.rescue_rate_pct ?? 88.5,
+      successfulHandoffCount: data.successful_handoff_count ?? 4,
+      failedOrCancelledCount: data.failed_or_cancelled_count ?? 1,
+      averagePickupTimeMinutes: data.average_pickup_time_minutes ?? 23.2,
       monthlyTrends: data.monthly_trends.map((t: any) => ({
         month: t.month,
         plannedPortions: t.planned_portions,
@@ -548,9 +560,232 @@ export async function getImpactSummary(): Promise<ImpactSummary> {
         percentage: c.percentage,
         rescuedKg: c.rescued_kg,
       })),
+      environmentalAssumptions: data.environmental_assumptions
+        ? {
+            co2eFactorKgPerKgFood: data.environmental_assumptions.co2e_factor_kg_per_kg_food,
+            waterFactorLitersPerKgFood: data.environmental_assumptions.water_factor_liters_per_kg_food,
+            kgPerPortionDefault: data.environmental_assumptions.kg_per_portion_default,
+            methodologyNote: data.environmental_assumptions.methodology_note,
+          }
+        : undefined,
+      isDemoData: data.is_demo_data ?? true,
     };
   } catch (error) {
     console.warn('Using local demonstration fallback for impact:', error);
     return DEMO_IMPACT_SUMMARY;
   }
+}
+
+/**
+ * Fetch detailed post-service impact events from FastAPI /api/v1/impact/events
+ */
+export async function getImpactEvents(
+  kitchenId?: string,
+  limit: number = 50
+): Promise<ImpactEvent[]> {
+  try {
+    const params = new URLSearchParams();
+    if (kitchenId) params.append('kitchen_id', kitchenId);
+    params.append('limit', limit.toString());
+
+    const res = await fetch(`${API_BASE_URL}/api/v1/impact/events?${params.toString()}`);
+    if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+    const data = await res.json();
+    return data.map((e: any) => ({
+      eventId: e.event_id,
+      timestamp: e.timestamp,
+      kitchenId: e.kitchen_id,
+      mealSlot: e.meal_slot,
+      mealDate: e.meal_date,
+      dishName: e.dish_name,
+      category: e.category,
+      demandPredictionId: e.demand_prediction_id,
+      surplusId: e.surplus_id,
+      safetyVerificationId: e.safety_verification_id,
+      matchId: e.match_id,
+      dispatchId: e.dispatch_id,
+      recipientId: e.recipient_id,
+      recipientName: e.recipient_name,
+      plannedPortions: e.planned_portions,
+      predictedDemand: e.predicted_demand,
+      actualConsumed: e.actual_consumed,
+      mealsPrepared: e.meals_prepared,
+      surplusPortions: e.surplus_portions,
+      surplusWeightKg: e.surplus_weight_kg,
+      safelyRedistributedPortions: e.safely_redistributed_portions,
+      redistributedWeightKg: e.redistributed_weight_kg,
+      compostedOrDiscardedKg: e.composted_or_discarded_kg,
+      safetyOutcome: e.safety_outcome,
+      redistributionOutcome: e.redistribution_outcome,
+      pickupTimeMinutes: e.pickup_time_minutes,
+      estimatedCo2eAvoidedKg: e.estimated_co2e_avoided_kg,
+      estimatedWaterSavedLiters: e.estimated_water_saved_liters,
+      isDemoData: e.is_demo_data,
+      notes: e.notes,
+    }));
+  } catch (error) {
+    console.warn('Using local demonstration fallback for impact events:', error);
+    return DEMO_IMPACT_EVENTS;
+  }
+}
+
+/**
+ * Record a new completed service impact event to FastAPI /api/v1/impact/record
+ */
+export async function recordImpactEvent(payload: any): Promise<ImpactEvent> {
+  const res = await fetch(`${API_BASE_URL}/api/v1/impact/record`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) {
+    const errorDetails = await res.json().catch(() => ({}));
+    const message =
+      errorDetails?.detail?.[0]?.msg ||
+      errorDetails?.detail ||
+      `Record impact failed with status: ${res.status}`;
+    throw new Error(message);
+  }
+
+  const e = await res.json();
+  return {
+    eventId: e.event_id,
+    timestamp: e.timestamp,
+    kitchenId: e.kitchen_id,
+    mealSlot: e.meal_slot,
+    mealDate: e.meal_date,
+    dishName: e.dish_name,
+    category: e.category,
+    demandPredictionId: e.demand_prediction_id,
+    surplusId: e.surplus_id,
+    safetyVerificationId: e.safety_verification_id,
+    matchId: e.match_id,
+    dispatchId: e.dispatch_id,
+    recipientId: e.recipient_id,
+    recipientName: e.recipient_name,
+    plannedPortions: e.planned_portions,
+    predictedDemand: e.predicted_demand,
+    actualConsumed: e.actual_consumed,
+    mealsPrepared: e.meals_prepared,
+    surplusPortions: e.surplus_portions,
+    surplusWeightKg: e.surplus_weight_kg,
+    safelyRedistributedPortions: e.safely_redistributed_portions,
+    redistributedWeightKg: e.redistributed_weight_kg,
+    compostedOrDiscardedKg: e.composted_or_discarded_kg,
+    safetyOutcome: e.safety_outcome,
+    redistributionOutcome: e.redistribution_outcome,
+    pickupTimeMinutes: e.pickup_time_minutes,
+    estimatedCo2eAvoidedKg: e.estimated_co2e_avoided_kg,
+    estimatedWaterSavedLiters: e.estimated_water_saved_liters,
+    isDemoData: e.is_demo_data,
+    notes: e.notes,
+  };
+}
+
+/**
+ * Fetch statistical demand forecast performance from FastAPI /api/v1/learning/demand-performance
+ */
+export async function getDemandPerformance(): Promise<DemandPerformanceSummary> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/v1/learning/demand-performance`);
+    if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+    const data = await res.json();
+    return {
+      totalEvaluatedMeals: data.total_evaluated_meals,
+      meanAbsoluteError: data.mean_absolute_error,
+      meanPercentageError: data.mean_percentage_error,
+      overPredictionCount: data.over_prediction_count,
+      underPredictionCount: data.under_prediction_count,
+      balancedCount: data.balanced_count,
+      records: data.records.map((r: any) => ({
+        recordId: r.record_id,
+        kitchenId: r.kitchen_id,
+        mealSlot: r.meal_slot,
+        planDate: r.plan_date,
+        dishName: r.dish_name,
+        registeredHeadcount: r.registered_headcount,
+        plannedPortions: r.planned_portions,
+        predictedDiners: r.predicted_diners,
+        actualDiners: r.actual_diners,
+        absoluteError: r.absolute_error,
+        percentageError: r.percentage_error,
+        bias: r.bias,
+        surplusRiskPredicted: r.surplus_risk_predicted,
+        actualSurplusPortions: r.actual_surplus_portions,
+        reasonCodes: r.reason_codes,
+        isDemoData: r.is_demo_data,
+      })),
+      disclaimer: data.disclaimer,
+    };
+  } catch (error) {
+    console.warn('Using local demonstration fallback for demand performance:', error);
+    return DEMO_DEMAND_PERFORMANCE;
+  }
+}
+
+/**
+ * Fetch operational feedback signals from FastAPI /api/v1/learning/feedback
+ */
+export async function getLearningSignals(
+  signalType?: string,
+  severity?: string
+): Promise<LearningSignal[]> {
+  try {
+    const params = new URLSearchParams();
+    if (signalType) params.append('signal_type', signalType);
+    if (severity) params.append('severity', severity);
+
+    const res = await fetch(`${API_BASE_URL}/api/v1/learning/feedback?${params.toString()}`);
+    if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+    const data = await res.json();
+    return data.map((s: any) => ({
+      signalId: s.signal_id,
+      signalType: s.signal_type,
+      severity: s.severity,
+      timestamp: s.timestamp,
+      kitchenId: s.kitchen_id,
+      mealSlot: s.meal_slot,
+      dishName: s.dish_name,
+      description: s.description,
+      metricObserved: s.metric_observed,
+      targetThreshold: s.target_threshold,
+      suggestedAction: s.suggested_action,
+      feedbackDatasetReady: s.feedback_dataset_ready,
+      isDemoData: s.is_demo_data,
+    }));
+  } catch (error) {
+    console.warn('Using local demonstration fallback for learning signals:', error);
+    return DEMO_LEARNING_SIGNALS;
+  }
+}
+
+/**
+ * Submit post-service outcome feedback to FastAPI /api/v1/learning/feedback
+ */
+export async function submitLearningFeedback(
+  payload: LearningFeedbackPayload
+): Promise<any> {
+  const res = await fetch(`${API_BASE_URL}/api/v1/learning/feedback`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) {
+    const errorDetails = await res.json().catch(() => ({}));
+    const message =
+      errorDetails?.detail?.[0]?.msg ||
+      errorDetails?.detail ||
+      `Submit feedback failed with status: ${res.status}`;
+    throw new Error(message);
+  }
+
+  return res.json();
 }

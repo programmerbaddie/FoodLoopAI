@@ -234,6 +234,13 @@ export interface RedistributionDispatch {
   isDemoData?: boolean;
 }
 
+export interface EnvironmentalAssumptions {
+  co2eFactorKgPerKgFood: number;
+  waterFactorLitersPerKgFood: number;
+  kgPerPortionDefault: number;
+  methodologyNote: string;
+}
+
 export interface ImpactSummary {
   totalMealsRescued: number;
   totalKgWasteDiverted: number;
@@ -241,6 +248,11 @@ export interface ImpactSummary {
   waterSavedLiters: number;
   beneficiaryCountServed: number;
   averageKitchenSurplusReductionPct: number;
+  surplusRatePct?: number;
+  rescueRatePct?: number;
+  successfulHandoffCount?: number;
+  failedOrCancelledCount?: number;
+  averagePickupTimeMinutes?: number;
   monthlyTrends: Array<{
     month: string;
     plannedPortions: number;
@@ -253,4 +265,110 @@ export interface ImpactSummary {
     percentage: number;
     rescuedKg: number;
   }>;
+  environmentalAssumptions?: EnvironmentalAssumptions;
+  isDemoData?: boolean;
+}
+
+export interface ImpactEvent {
+  eventId: string;
+  timestamp: string;
+  kitchenId: string;
+  mealSlot: string;
+  mealDate: string;
+  dishName: string;
+  category: SurplusCategory;
+  demandPredictionId?: string | null;
+  surplusId?: string | null;
+  safetyVerificationId?: string | null;
+  matchId?: string | null;
+  dispatchId?: string | null;
+  recipientId?: string | null;
+  recipientName?: string | null;
+  plannedPortions: number;
+  predictedDemand: number;
+  actualConsumed: number;
+  mealsPrepared: number;
+  surplusPortions: number;
+  surplusWeightKg: number;
+  safelyRedistributedPortions: number;
+  redistributedWeightKg: number;
+  compostedOrDiscardedKg: number;
+  safetyOutcome: string;
+  redistributionOutcome: string;
+  pickupTimeMinutes?: number | null;
+  estimatedCo2eAvoidedKg: number;
+  estimatedWaterSavedLiters: number;
+  isDemoData?: boolean;
+  notes?: string | null;
+}
+
+export type PredictionBias = 'Over-Prediction' | 'Under-Prediction' | 'Balanced';
+
+export interface DemandPerformanceRecord {
+  recordId: string;
+  kitchenId: string;
+  mealSlot: string;
+  planDate: string;
+  dishName: string;
+  registeredHeadcount: number;
+  plannedPortions: number;
+  predictedDiners: number;
+  actualDiners: number;
+  absoluteError: number;
+  percentageError: number;
+  bias: PredictionBias;
+  surplusRiskPredicted: string;
+  actualSurplusPortions: number;
+  reasonCodes: string[];
+  isDemoData?: boolean;
+}
+
+export interface DemandPerformanceSummary {
+  totalEvaluatedMeals: number;
+  meanAbsoluteError: number;
+  meanPercentageError: number;
+  overPredictionCount: number;
+  underPredictionCount: number;
+  balancedCount: number;
+  records: DemandPerformanceRecord[];
+  disclaimer: string;
+}
+
+export type LearningSignalType =
+  | 'OVER_PREPARATION'
+  | 'UNDER_PREPARATION'
+  | 'HIGH_SURPLUS_MEAL'
+  | 'PICKUP_DELAY'
+  | 'RECIPIENT_REJECTION'
+  | 'RECIPIENT_ACCEPTED'
+  | 'SAFETY_FAILURE'
+  | 'SAFETY_PASSED';
+
+export interface LearningSignal {
+  signalId: string;
+  signalType: LearningSignalType;
+  severity: 'low' | 'moderate' | 'high';
+  timestamp: string;
+  kitchenId: string;
+  mealSlot: string;
+  dishName?: string | null;
+  description: string;
+  metricObserved: number;
+  targetThreshold: number;
+  suggestedAction: string;
+  feedbackDatasetReady: boolean;
+  isDemoData?: boolean;
+}
+
+export interface LearningFeedbackPayload {
+  kitchen_id: string;
+  meal_slot: string;
+  plan_date: string;
+  dish_name: string;
+  registered_headcount?: number;
+  planned_portions?: number;
+  predicted_portions: number;
+  actual_consumed: number;
+  actual_surplus?: number;
+  reason_notes?: string;
 }
