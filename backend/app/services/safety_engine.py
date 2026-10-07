@@ -47,28 +47,77 @@ class FoodSafetyVerificationEngine:
 
         # 1. Sensory Inspection (Critical prerequisite)
         sensory = data.sensory_inspection
+        if (
+            sensory is None
+            or sensory.odor_normal is None
+            or sensory.color_normal is None
+            or sensory.texture_normal is None
+            or sensory.sanitary_vessel is None
+        ):
+            missing_checks: list[str] = []
+            if sensory is None:
+                missing_checks.append("All 4 sensory check fields missing")
+            else:
+                if sensory.odor_normal is None:
+                    missing_checks.append("Odor check omitted")
+                if sensory.color_normal is None:
+                    missing_checks.append("Color/appearance check omitted")
+                if sensory.texture_normal is None:
+                    missing_checks.append("Texture check omitted")
+                if sensory.sanitary_vessel is None:
+                    missing_checks.append("Sanitary vessel check omitted")
+
+            reason_codes.append("INCOMPLETE_SENSORY_INSPECTION")
+            reason_codes.append("SAFETY_HOLD_REQUIRED")
+            observations.extend(missing_checks)
+            observations.append("Incomplete Protocol: All 4 sensory points (odor, appearance, texture, sanitary vessel) must be explicitly recorded.")
+
+            return SafetyVerificationRecordResponse(
+                id=f"SAFE-EVAL-{datetime.now().strftime('%H%M%S')}",
+                surplus_id=data.surplus_id,
+                batch_code=batch_code,
+                dish_name=dish_name,
+                inspection_timestamp=datetime.now().strftime("%H:%M IST"),
+                core_temp_c=data.core_temp_c,
+                temp_standard=f"≥ {self.FSSAI_HOT_HOLD_MIN_TEMP_C}°C (Hot Holding)",
+                is_temp_compliant=False,
+                hold_time_elapsed_hours=hold_hours,
+                max_safe_hold_hours=self.MAX_HOT_HOLD_HOURS,
+                sensory_inspection=sensory or SensoryInspection(),
+                compliance_status=ComplianceGrade.ATTENTION_REQUIRED,
+                redistribution_eligible=False,
+                regulatory_basis=self.REGULATORY_CITATION,
+                operational_rule="Mandatory 4-point sensory protocol required before safety signoff.",
+                reason_codes=reason_codes,
+                observations=observations,
+                inspector_name=data.inspector_name,
+                digital_certificate_id=None,
+                fssai_regulation="Pending: Incomplete sensory verification checklist.",
+                is_demo_data=False,
+            )
+
         sensory_ok = (
-            sensory.odor_normal
-            and sensory.color_normal
-            and sensory.texture_normal
-            and sensory.sanitary_vessel
+            sensory.odor_normal is True
+            and sensory.color_normal is True
+            and sensory.texture_normal is True
+            and sensory.sanitary_vessel is True
         )
 
         if not sensory_ok:
             failed_sensory: list[str] = []
-            if not sensory.odor_normal:
+            if sensory.odor_normal is False:
                 failed_sensory.append("Off-odor or sour aroma detected")
-            if not sensory.color_normal:
+            if sensory.color_normal is False:
                 failed_sensory.append("Unnatural discoloration / oxidation observed")
-            if not sensory.texture_normal:
+            if sensory.texture_normal is False:
                 failed_sensory.append("Abnormal texture, curding, or sliminess")
-            if not sensory.sanitary_vessel:
+            if sensory.sanitary_vessel is False:
                 failed_sensory.append("Holding vessel or lid compromised / unwashed")
 
             reason_codes.append("SENSORY_DEFECT_DETECTED")
             reason_codes.append("MANDATORY_COMPOST_DISPOSAL")
             observations.extend(failed_sensory)
-            observations.append("Critical Failure: Food fails FSSAI Schedule 4 sensory soundness requirements.")
+            observations.append("Critical Failure: Food fails operational hygiene sensory soundness requirements.")
 
             return SafetyVerificationRecordResponse(
                 id=f"SAFE-EVAL-{datetime.now().strftime('%H%M%S')}",
@@ -90,7 +139,7 @@ class FoodSafetyVerificationEngine:
                 observations=observations,
                 inspector_name=data.inspector_name,
                 digital_certificate_id=None,  # No verification token for failed food
-                fssai_regulation="Non-Compliant: Failed sensory inspection. Not safe for human consumption.",
+                fssai_regulation="Non-Compliant: Failed sensory inspection. Not safe for redistribution.",
                 is_demo_data=False,
             )
 
@@ -140,8 +189,8 @@ class FoodSafetyVerificationEngine:
             temp_standard_str = f"≥ {self.FSSAI_HOT_HOLD_MIN_TEMP_C}°C (Hot Holding)"
             is_temp_compliant = core_temp >= self.FSSAI_HOT_HOLD_MIN_TEMP_C
             if is_temp_compliant:
-                reason_codes.append("FSSAI_HOT_HOLD_MET")
-                observations.append(f"Core probe {core_temp}°C meets FSSAI Schedule 4 hot holding minimum (≥60.0°C).")
+                reason_codes.append("HOT_HOLD_STANDARD_MET")
+                observations.append(f"Core probe {core_temp}°C meets hot holding minimum (≥60.0°C).")
             else:
                 reason_codes.append("CORE_TEMP_BELOW_HOT_HOLD_LIMIT")
                 observations.append(
@@ -152,8 +201,8 @@ class FoodSafetyVerificationEngine:
             temp_standard_str = f"≤ {self.FSSAI_COLD_HOLD_MAX_TEMP_C}°C (Cold Holding)"
             is_temp_compliant = core_temp <= self.FSSAI_COLD_HOLD_MAX_TEMP_C
             if is_temp_compliant:
-                reason_codes.append("FSSAI_COLD_HOLD_MET")
-                observations.append(f"Chilled probe {core_temp}°C meets FSSAI cold holding maximum (≤5.0°C).")
+                reason_codes.append("COLD_HOLD_STANDARD_MET")
+                observations.append(f"Chilled probe {core_temp}°C meets cold holding maximum (≤5.0°C).")
             else:
                 reason_codes.append("COLD_HOLD_TEMP_EXCEEDED")
                 observations.append(f"Temperature {core_temp}°C exceeded chilled limit (≤5.0°C).")
@@ -203,12 +252,12 @@ class FoodSafetyVerificationEngine:
 
         else:
             # Fully compliant
-            compliance_status = ComplianceGrade.VERIFIED_SAFE
+            compliance_status = ComplianceGrade.SAFETY_VERIFIED
             redistribution_eligible = True
-            cert_id = f"FSSAI-FL-2026-{datetime.now().strftime('%m%d%H%M%S')[-6:]}-OK"
-            reason_codes.append("VERIFIED_SAFE_FOR_REDISTRIBUTION")
-            observations.append("All statutory safety and hygiene standards satisfied. Cleared for recipient allocation.")
-            reg_text = "FoodLoop Verified Safe: Evaluated compliant with FSSAI Schedule 4 hygiene standards and internal operational holding thresholds."
+            cert_id = f"FL-VERIFIED-{datetime.now().strftime('%Y%m%d')}-{datetime.now().strftime('%H%M%S')}"
+            reason_codes.append("SAFETY_VERIFIED_FOR_REDISTRIBUTION")
+            observations.append("All operational safety and hygiene standards satisfied. Cleared for recipient allocation.")
+            reg_text = "FoodLoop Safety Verified: Evaluated compliant with operational hygiene standards and temperature holding thresholds."
 
         return SafetyVerificationRecordResponse(
             id=f"SAFE-REC-{datetime.now().strftime('%H%M%S')}",

@@ -9,41 +9,34 @@ import { SafetyVerificationPage } from './pages/SafetyVerificationPage';
 import { RecipientMatchingPage } from './pages/RecipientMatchingPage';
 import { RedistributionPage } from './pages/RedistributionPage';
 import { ImpactPage } from './pages/ImpactPage';
-import { checkBackendHealth, HealthStatus } from './services/api';
+import { checkBackendHealth } from './services/api';
 import { NavTabId } from './types';
 
 export const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<NavTabId>('overview');
-  const [health, setHealth] = useState<HealthStatus | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState<boolean>(false);
 
-  const fetchHealth = useCallback(async () => {
+  const refreshTelemetry = useCallback(async () => {
     setLoading(true);
-    setError(null);
     try {
-      const data = await checkBackendHealth();
-      setHealth(data);
-    } catch (err: unknown) {
-      const errorMessage =
-        err instanceof Error ? err.message : 'Failed to connect to backend';
-      setError(errorMessage);
-      setHealth(null);
+      await checkBackendHealth();
+    } catch {
+      // Graceful offline fallback
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    fetchHealth();
-    const interval = setInterval(fetchHealth, 30000);
+    refreshTelemetry();
+    const interval = setInterval(refreshTelemetry, 60000);
     return () => clearInterval(interval);
-  }, [fetchHealth]);
+  }, [refreshTelemetry]);
 
   return (
-    <div className="min-h-screen flex flex-col bg-foodloop-canvas text-foodloop-navy selection:bg-emerald-100 selection:text-emerald-900">
-      {/* Brand Header with Live Health Indicator */}
-      <Header health={health} loading={loading} error={error} />
+    <div className="min-h-screen flex flex-col bg-foodloop-canvas dark:bg-foodloop-canvasDark text-foodloop-navy dark:text-slate-100 selection:bg-emerald-100 selection:text-emerald-900 transition-colors">
+      {/* Brand Header with Theme Toggle */}
+      <Header onRefreshData={refreshTelemetry} isRefreshing={loading} />
 
       {/* Main Operational Tabs Navigation */}
       <NavTabs activeTab={activeTab} onTabChange={setActiveTab} />
@@ -56,15 +49,12 @@ export const App: React.FC = () => {
         {/* Dynamic Route View */}
         <section aria-label="Active Operational Module">
           {activeTab === 'overview' && (
-            <OverviewPage
-              onNavigateTab={setActiveTab}
-              health={health}
-              loadingHealth={loading}
-              onRefreshHealth={fetchHealth}
-            />
+            <OverviewPage onNavigateTab={setActiveTab} />
           )}
 
-          {activeTab === 'demand' && <DemandPredictionPage />}
+          {activeTab === 'demand' && (
+            <DemandPredictionPage onNavigateTab={setActiveTab} />
+          )}
 
           {activeTab === 'surplus' && (
             <SurplusPage onNavigateTab={setActiveTab} />
@@ -82,25 +72,23 @@ export const App: React.FC = () => {
             <RedistributionPage onNavigateTab={setActiveTab} />
           )}
 
-          {activeTab === 'impact' && <ImpactPage />}
+          {activeTab === 'impact' && (
+            <ImpactPage onNavigateTab={setActiveTab} />
+          )}
         </section>
       </main>
 
-      {/* Institutional Compliance Footer */}
-      <footer className="border-t border-foodloop-border bg-foodloop-surface py-6 text-xs text-foodloop-textMuted mt-12">
+      {/* Subtle Global Product Footer */}
+      <footer className="border-t border-foodloop-border dark:border-foodloop-borderDark bg-foodloop-surface dark:bg-foodloop-surfaceDark py-6 text-xs text-foodloop-textMuted dark:text-foodloop-textMutedDark mt-12 transition-colors">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <span className="font-bold text-foodloop-navy">FoodLoop AI</span>
+            <span className="font-bold text-foodloop-navy dark:text-slate-200">FoodLoop</span>
             <span>•</span>
-            <span>Smart India Hackathon 2026 (SIH26234)</span>
-            <span>•</span>
-            <span>Ministry of Food Processing Industries (MoFPI)</span>
+            <span>Smart Food Waste Reduction & Sustainable Redistribution</span>
           </div>
 
-          <div className="flex items-center space-x-3 text-slate-500 font-mono text-[11px]">
-            <span>Team IMPACT INNOVATOR</span>
-            <span>•</span>
-            <span>v0.2.0-phase2-dashboard</span>
+          <div className="flex items-center space-x-3 text-slate-400 dark:text-slate-500 text-[11px]">
+            <span>Powered by Impact Innovators</span>
           </div>
         </div>
       </footer>

@@ -14,20 +14,20 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({
   actions,
 }) => {
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-foodloop-border gap-2">
+    <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-foodloop-border dark:border-foodloop-borderDark gap-2">
       <div>
         <div className="flex items-center space-x-2">
-          <h2 className="text-base sm:text-lg font-bold tracking-tight text-foodloop-navy">
+          <h2 className="text-base sm:text-lg font-bold tracking-tight text-foodloop-navy dark:text-slate-100">
             {title}
           </h2>
           {badge && (
-            <span className="text-[11px] font-mono font-semibold px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200">
+            <span className="text-[11px] font-mono font-semibold px-2 py-0.5 rounded bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
               {badge}
             </span>
           )}
         </div>
         {subtitle && (
-          <p className="text-xs text-foodloop-textMuted mt-0.5">{subtitle}</p>
+          <p className="text-xs text-foodloop-textMuted dark:text-foodloop-textMutedDark mt-0.5">{subtitle}</p>
         )}
       </div>
 

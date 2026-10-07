@@ -15,10 +15,17 @@ class SurplusCategory(str, Enum):
 class SurplusStatus(str, Enum):
     DETECTED = "Detected"
     PENDING_VERIFICATION = "Pending Verification"
-    VERIFIED_SAFE = "Verified Safe"
+    SAFETY_VERIFIED = "Safety Verified"
+    VERIFIED_SAFE = "Safety Verified"  # backward-compatible alias
     MATCHED = "Matched"
     DISPATCHED = "Dispatched"
     COMPOSTED = "Composted"
+
+    @classmethod
+    def _missing_(cls, value):
+        if str(value).lower() in ("verified safe", "verified_safe", "safety_verified"):
+            return cls.SAFETY_VERIFIED
+        return super()._missing_(value)
 
 
 class SurplusRecordBase(BaseModel):

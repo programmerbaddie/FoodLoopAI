@@ -14,6 +14,7 @@ import {
   Info,
 } from 'lucide-react';
 import {
+  NavTabId,
   ImpactSummary,
   ImpactEvent,
   DemandPerformanceSummary,
@@ -29,8 +30,13 @@ import { MetricCard } from '../components/ui/MetricCard';
 import { SectionHeader } from '../components/ui/SectionHeader';
 import { DataTable } from '../components/ui/DataTable';
 import { ActionButton } from '../components/ui/ActionButton';
+import { WorkflowContextBar } from '../components/ui/WorkflowContextBar';
 
-export const ImpactPage: React.FC = () => {
+interface ImpactPageProps {
+  onNavigateTab?: (tab: NavTabId) => void;
+}
+
+export const ImpactPage: React.FC<ImpactPageProps> = ({ onNavigateTab }) => {
   const [summary, setSummary] = useState<ImpactSummary | null>(null);
   const [events, setEvents] = useState<ImpactEvent[]>([]);
   const [demandPerf, setDemandPerf] = useState<DemandPerformanceSummary | null>(null);
@@ -65,7 +71,7 @@ export const ImpactPage: React.FC = () => {
 
   if (isLoading && !summary) {
     return (
-      <div className="p-12 text-center text-slate-400 text-sm">
+      <div className="p-12 text-center text-slate-400 dark:text-slate-500 text-sm">
         Loading impact telemetry and closed-loop learning parameters...
       </div>
     );
@@ -79,7 +85,7 @@ export const ImpactPage: React.FC = () => {
   const totalConsumedPortions = events.reduce((acc, e) => acc + e.actualConsumed, 0);
   const totalSurplusPortions = events.reduce((acc, e) => acc + e.surplusPortions, 0);
   const totalSafePortions = events
-    .filter((e) => e.safetyOutcome === 'Verified Safe')
+    .filter((e) => e.safetyOutcome === 'Verified Safe' || e.safetyOutcome === 'Safety Verified')
     .reduce((acc, e) => acc + e.surplusPortions, 0);
   const totalRedistributedPortions = events.reduce(
     (acc, e) => acc + e.safelyRedistributedPortions,
@@ -111,8 +117,17 @@ export const ImpactPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {/* Workflow Navigation Context */}
+      <WorkflowContextBar
+        currentStage="LEARN"
+        purpose="Post-service outcome accounting, food waste diversion telemetry, and closed-loop demand forecast calibration."
+        prev={{ tab: 'redistribution', label: 'REDISTRIBUTE: Logistics' }}
+        next={{ tab: 'overview', label: 'Overview: Operations' }}
+        onNavigate={onNavigateTab}
+      />
+
       {/* Header Banner */}
-      <div className="bg-foodloop-surface border border-foodloop-border rounded-xl p-5 shadow-xs">
+      <div className="bg-foodloop-surface dark:bg-slate-900 border border-foodloop-border dark:border-slate-800 rounded-xl p-5 shadow-xs transition-colors">
         <SectionHeader
           title="Impact Telemetry & Closed-Loop Learning"
           subtitle="Post-service outcome accounting, demand prediction calibration, and curated feedback datasets"
@@ -130,10 +145,10 @@ export const ImpactPage: React.FC = () => {
           }
         />
 
-        <div className="mt-4 p-3.5 rounded-lg bg-emerald-50/60 border border-emerald-200 text-xs text-emerald-950 flex items-start gap-2.5">
-          <RotateCw className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
+        <div className="mt-4 p-3.5 rounded-lg bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 text-xs text-emerald-950 dark:text-emerald-200 flex items-start gap-2.5">
+          <RotateCw className="w-4 h-4 text-emerald-700 dark:text-emerald-400 shrink-0 mt-0.5" />
           <div className="leading-relaxed">
-            <strong>The Closed-Loop Feedback Principle:</strong> Every post-service variance logged today connects historical actual consumption back to demand forecasts. This structures clean outcome datasets that will calibrate future prep multipliers and ML weights without manual guesswork.
+            <strong>The Closed-Loop Feedback Principle:</strong> Every post-service variance logged today connects historical actual consumption back to demand forecasts. This structures clean outcome datasets that calibrate future prep multipliers and ML weights without manual guesswork.
           </div>
         </div>
       </div>
@@ -229,10 +244,10 @@ export const ImpactPage: React.FC = () => {
             <span className="text-[11px] text-amber-700 block">Post-Service Excess</span>
           </div>
 
-          {/* Step 4: Verified Safe */}
+          {/* Step 4: Safety Verified */}
           <div className="p-3 rounded-lg bg-emerald-50/50 border border-emerald-200 space-y-1">
             <span className="text-[10px] uppercase font-bold text-emerald-800 block">
-              4. Verified Safe
+              4. Safety Verified
             </span>
             <span className="text-lg font-bold text-foodloop-green font-mono">
               {totalSafePortions.toLocaleString()}

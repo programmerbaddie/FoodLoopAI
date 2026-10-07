@@ -45,7 +45,7 @@ const STAGE_SPECS: Record<string, StageSpec> = {
       'Allergen declarations and packaging status',
     ],
     expectedOutputs: [
-      'Safety clearance certificate / QR badge',
+      'Safety verification token / QR pass',
       'Safe redistribution window (countdown timer)',
       'Immediate composting / discard flag if threshold breached',
     ],
@@ -104,7 +104,7 @@ const STAGE_SPECS: Record<string, StageSpec> = {
     description:
       'Runtime telemetry, API route registry, database connectivity checks, and event logs for the FoodLoop AI ecosystem.',
     expectedInputs: [
-      'FastAPI server logs',
+      'Operational server logs',
       'Network latency probes',
       'Scheduled task worker states',
     ],
@@ -114,7 +114,7 @@ const STAGE_SPECS: Record<string, StageSpec> = {
       'Dependency diagnostic matrix',
     ],
     targetCapabilities: [
-      'Uvicorn / FastAPI process monitoring',
+      'Application runtime process monitoring',
       'CORS and proxy validation',
       'Structured logging viewer',
     ],

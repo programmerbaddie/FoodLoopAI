@@ -25,7 +25,7 @@ class SurplusService:
                 portions_equivalent=60,
                 prep_timestamp="12:15 IST",
                 holding_temp_c=66.0,
-                status=SurplusStatus.VERIFIED_SAFE,
+                status=SurplusStatus.SAFETY_VERIFIED,
                 storage_unit="Insulated Hot-Holding Cabinet #1",
                 shelf_life_remaining_hours=2.2,
                 requires_safety_verification=True,
@@ -46,7 +46,7 @@ class SurplusService:
                 portions_equivalent=45,
                 prep_timestamp="12:30 IST",
                 holding_temp_c=64.0,
-                status=SurplusStatus.VERIFIED_SAFE,
+                status=SurplusStatus.SAFETY_VERIFIED,
                 storage_unit="Insulated Hot-Holding Cabinet #2",
                 shelf_life_remaining_hours=2.5,
                 requires_safety_verification=True,
@@ -162,7 +162,7 @@ class SurplusService:
         for r in self._demo_records:
             if r.id == surplus_id:
                 r.status = new_status
-                if new_status == SurplusStatus.VERIFIED_SAFE:
+                if new_status in (SurplusStatus.SAFETY_VERIFIED, SurplusStatus.VERIFIED_SAFE):
                     r.redistribution_eligible = True
                 elif new_status in (SurplusStatus.PENDING_VERIFICATION, SurplusStatus.COMPOSTED):
                     r.redistribution_eligible = False
@@ -179,7 +179,7 @@ class SurplusService:
         for r in self._demo_records:
             if r.id == surplus_id:
                 if is_safe:
-                    r.status = SurplusStatus.VERIFIED_SAFE
+                    r.status = SurplusStatus.SAFETY_VERIFIED
                     r.redistribution_eligible = True
                 elif is_discard:
                     r.status = SurplusStatus.COMPOSTED

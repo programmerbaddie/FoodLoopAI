@@ -157,7 +157,7 @@ class MatchingService:
                 match_status=MatchStatus.SUGGESTED,
                 eligibility=True,
                 reasons=[
-                    "Safety Gate: Verified Safe with valid holding temp (66°C)",
+                    "Safety Gate: Safety Verified with valid holding temp (66°C)",
                     "Proximity: 3.8 km radial distance (~18 mins transit)",
                     "Capacity: 60 portions fit shelter capacity of 90 meals",
                 ],
@@ -184,7 +184,7 @@ class MatchingService:
                 match_status=MatchStatus.SUGGESTED,
                 eligibility=True,
                 reasons=[
-                    "Safety Gate: Verified Safe with valid holding temp (64°C)",
+                    "Safety Gate: Safety Verified with valid holding temp (64°C)",
                     "Proximity: 4.5 km radial distance (~22 mins transit)",
                     "Capacity: 45 portions fit meal center demand",
                 ],
@@ -211,7 +211,7 @@ class MatchingService:
                 match_status=MatchStatus.SUGGESTED,
                 eligibility=True,
                 reasons=[
-                    "Safety Gate: Verified Safe",
+                    "Safety Gate: Safety Verified",
                     "Closest proximity: 2.4 km radial distance (~12 mins)",
                     "High distribution volume capacity",
                 ],

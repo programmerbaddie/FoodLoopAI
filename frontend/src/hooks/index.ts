@@ -1,2 +1,2 @@
-// Custom React hooks placeholder for FoodLoop AI modules
-export {};
+export { useTheme } from './useTheme';
+export type { ThemeMode } from './useTheme';

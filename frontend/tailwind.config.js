@@ -1,5 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 export default {
+  darkMode: 'class',
   content: [
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
@@ -9,13 +10,18 @@ export default {
       colors: {
         foodloop: {
           canvas: "#F8FAFC",
+          canvasDark: "#0B132B",
           surface: "#FFFFFF",
+          surfaceDark: "#111D36",
           surfaceHover: "#F1F5F9",
+          surfaceHoverDark: "#1C2D4A",
           border: "#E2E8F0",
+          borderDark: "#223554",
           borderStrong: "#CBD5E1",
           navy: "#0F1E36",
           navyMuted: "#334155",
           textMuted: "#64748B",
+          textMutedDark: "#94A3B8",
           green: "#15803D",
           greenHover: "#166534",
           greenLight: "#F0FDF4",
@@ -24,6 +30,22 @@ export default {
           orangeHover: "#C2410C",
           orangeLight: "#FFF7ED",
           orangeBorder: "#FED7AA",
+          // Semantic Role Palette
+          purple: "#7C3AED",
+          purpleLight: "#FAF5FF",
+          purpleBorder: "#E9D5FF",
+          teal: "#0D9488",
+          tealLight: "#F0FDFA",
+          tealBorder: "#99F6E4",
+          blue: "#2563EB",
+          blueLight: "#EFF6FF",
+          blueBorder: "#BFDBFE",
+          red: "#DC2626",
+          redLight: "#FEF2F2",
+          redBorder: "#FECACA",
+          amber: "#D97706",
+          amberLight: "#FFFBEB",
+          amberBorder: "#FDE68A",
         },
       },
       fontFamily: {

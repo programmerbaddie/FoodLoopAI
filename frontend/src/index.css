@@ -6,14 +6,33 @@
   color-scheme: light;
 }
 
+:root.dark {
+  color-scheme: dark;
+}
+
 body {
   margin: 0;
   min-height: 100vh;
   background-color: #F8FAFC;
   color: #0F1E36;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.dark body {
+  background-color: #0B132B;
+  color: #F1F5F9;
 }
 
 /* Tabular figures for operational metrics and codes */
 .tabular-numbers {
   font-variant-numeric: tabular-nums;
+}
+
+/* Smooth hide scrollbars for horizontal nav */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }

@@ -1,7 +1,7 @@
 """Smart Recipient Matching Engine for FoodLoop AI.
 
 Implements an explainable, deterministic baseline matching algorithm:
-- Strict Safety Gate: Only 'Verified Safe' and 'redistribution_eligible=True' surplus batches can enter matching.
+- Strict Safety Gate: Only 'Safety Verified' and 'redistribution_eligible=True' surplus batches can enter matching.
 - Multi-factor Eligibility Filter: Excludes inactive recipients, category mismatches, capacity shortfalls, and out-of-area locations with explicit reason codes.
 - Transparent Match Scoring: Configurable weights across proximity, capacity utilization, shelf-life urgency, and partner accreditation.
 
@@ -45,13 +45,14 @@ class RecipientMatchingEngine:
 
         # 1. Critical Safety Gate: Must be explicitly verified safe
         if not surplus.redistribution_eligible or surplus.status not in (
+            SurplusStatus.SAFETY_VERIFIED,
             SurplusStatus.VERIFIED_SAFE,
             SurplusStatus.MATCHED,
         ):
             reasons.append("SAFETY_VERIFICATION_REQUIRED")
             notes.append(
                 f"Surplus '{surplus.dish_name}' status is '{surplus.status.value}'. "
-                "Only surplus verified safe under FSSAI hygiene standards is eligible for redistribution."
+                "Only surplus verified safe under FoodLoop operational hygiene standards is eligible for redistribution."
             )
 
         # 2. Recipient Operational Status Gate

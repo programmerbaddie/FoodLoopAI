@@ -60,7 +60,7 @@ class ImpactEvent(BaseModel):
     composted_or_discarded_kg: float = Field(default=0.0, ge=0.0, description="Weight discarded or composted in kg")
 
     # Operational lifecycle outcomes
-    safety_outcome: str = Field(..., description="Internal safety verification result (e.g. Verified Safe, Non-Compliant)")
+    safety_outcome: str = Field(..., description="Internal safety verification result (e.g. Safety Verified, Non-Compliant)")
     redistribution_outcome: str = Field(..., description="Logistics status (e.g. Verified Handoff, In Transit, Cancelled, None)")
     pickup_time_minutes: int | None = Field(default=None, ge=0, description="Elapsed time from dispatch to recipient handoff in minutes")
 
@@ -87,7 +87,7 @@ class ImpactEventCreatePayload(BaseModel):
     safely_redistributed_portions: int = Field(default=0, ge=0, description="Portions successfully delivered")
     redistributed_weight_kg: float = Field(default=0.0, ge=0.0, description="Weight delivered in kg")
     composted_or_discarded_kg: float = Field(default=0.0, ge=0.0, description="Weight composted or discarded in kg")
-    safety_outcome: str = Field(default="Verified Safe", description="Safety verification outcome")
+    safety_outcome: str = Field(default="Safety Verified", description="Safety verification outcome")
     redistribution_outcome: str = Field(default="Verified Handoff", description="Redistribution status")
     pickup_time_minutes: int | None = Field(default=22, ge=0, description="Elapsed pickup time in minutes")
     demand_prediction_id: str | None = None

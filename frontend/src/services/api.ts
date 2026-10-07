@@ -309,7 +309,9 @@ export async function getSafetyRecords(): Promise<SafetyVerificationRecord[]> {
         sanitaryVessel: r.sensory_inspection.sanitary_vessel,
       },
       complianceStatus: r.compliance_status,
-      redistributionEligible: r.redistribution_eligible ?? (r.compliance_status === 'Verified Safe'),
+      redistributionEligible:
+        r.redistribution_eligible ??
+        (r.compliance_status === 'Safety Verified' || r.compliance_status === 'Verified Safe'),
       regulatoryBasis: r.regulatory_basis || 'FSSAI Schedule 4',
       operationalRule: r.operational_rule || '4.0h Safe Hold Ceiling',
       reasonCodes: r.reason_codes || [],
@@ -368,7 +370,9 @@ export async function verifySafety(
       sanitaryVessel: r.sensory_inspection.sanitary_vessel,
     },
     complianceStatus: r.compliance_status,
-    redistributionEligible: r.redistribution_eligible ?? (r.compliance_status === 'Verified Safe'),
+    redistributionEligible:
+      r.redistribution_eligible ??
+      (r.compliance_status === 'Safety Verified' || r.compliance_status === 'Verified Safe'),
     regulatoryBasis: r.regulatory_basis,
     operationalRule: r.operational_rule,
     reasonCodes: r.reason_codes || [],

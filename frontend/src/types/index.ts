@@ -72,6 +72,7 @@ export type SurplusCategory =
 export type SurplusStatus =
   | 'Detected'
   | 'Pending Verification'
+  | 'Safety Verified'
   | 'Verified Safe'
   | 'Matched'
   | 'Dispatched'
@@ -114,6 +115,7 @@ export interface SurplusDetectionPayload {
 }
 
 export type ComplianceGrade =
+  | 'Safety Verified'
   | 'Verified Safe'
   | 'Attention Required'
   | 'Non-Compliant (Discard)';

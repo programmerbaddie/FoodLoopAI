@@ -4,19 +4,30 @@ from pydantic import BaseModel, Field
 
 
 class ComplianceGrade(str, Enum):
-    VERIFIED_SAFE = "Verified Safe"
+    SAFETY_VERIFIED = "Safety Verified"
+    VERIFIED_SAFE = "Safety Verified"  # backward-compatible alias
     ATTENTION_REQUIRED = "Attention Required"
     NON_COMPLIANT_DISCARD = "Non-Compliant (Discard)"
 
+    @classmethod
+    def _missing_(cls, value):
+        if str(value).lower() in ("verified safe", "verified_safe", "safety_verified"):
+            return cls.SAFETY_VERIFIED
+        return super()._missing_(value)
+
 
 class SensoryInspection(BaseModel):
-    odor_normal: bool = Field(default=True, description="Sensory odor test passed")
-    color_normal: bool = Field(default=True, description="Visual appearance test passed")
-    texture_normal: bool = Field(
-        default=True, description="Consistency and texture test passed"
+    odor_normal: bool | None = Field(
+        default=None, description="Sensory odor test passed (explicit true/false required)"
     )
-    sanitary_vessel: bool = Field(
-        default=True, description="Holding vessel cleanliness verified"
+    color_normal: bool | None = Field(
+        default=None, description="Visual appearance test passed (explicit true/false required)"
+    )
+    texture_normal: bool | None = Field(
+        default=None, description="Consistency and texture test passed (explicit true/false required)"
+    )
+    sanitary_vessel: bool | None = Field(
+        default=None, description="Holding vessel cleanliness verified (explicit true/false required)"
     )
 
 
@@ -37,8 +48,8 @@ class SafetyVerificationInput(BaseModel):
     hold_time_elapsed_hours: float | None = Field(
         default=None, ge=0.0, description="Hours elapsed since batch preparation completed"
     )
-    sensory_inspection: SensoryInspection = Field(
-        default_factory=SensoryInspection, description="4-point sensory verification"
+    sensory_inspection: SensoryInspection | None = Field(
+        default=None, description="4-point sensory verification checklist (all 4 required)"
     )
     packaging_sealed: bool = Field(
         default=True, description="Food-grade container lid and seal intact"

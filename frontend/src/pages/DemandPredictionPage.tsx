@@ -5,24 +5,29 @@ import {
   Info,
   Calculator,
   RotateCw,
-  Server,
   AlertCircle,
   Tag,
 } from 'lucide-react';
-import { DemandPredictionItem, DemandInputPayload } from '../types';
+import { DemandPredictionItem, DemandInputPayload, NavTabId } from '../types';
 import { DEMO_DEMAND_PREDICTIONS } from '../data/mockData';
 import { getDemandPredictions, predictDemandAdHoc } from '../services/api';
 import { SectionHeader } from '../components/ui/SectionHeader';
 import { StatusBadge } from '../components/ui/StatusBadge';
 import { DataTable } from '../components/ui/DataTable';
 import { ActionButton } from '../components/ui/ActionButton';
+import { WorkflowContextBar } from '../components/ui/WorkflowContextBar';
 
-export const DemandPredictionPage: React.FC = () => {
+interface DemandPredictionPageProps {
+  onNavigateTab?: (tab: NavTabId) => void;
+}
+
+export const DemandPredictionPage: React.FC<DemandPredictionPageProps> = ({
+  onNavigateTab,
+}) => {
   const [predictions, setPredictions] = useState<DemandPredictionItem[]>(
     DEMO_DEMAND_PREDICTIONS
   );
   const [loading, setLoading] = useState<boolean>(true);
-  const [isLiveFromBackend, setIsLiveFromBackend] = useState<boolean>(false);
   const [acknowledged, setAcknowledged] = useState<Record<string, boolean>>({});
 
   // Ad-hoc calculation form state
@@ -47,10 +52,7 @@ export const DemandPredictionPage: React.FC = () => {
     try {
       const data = await getDemandPredictions();
       setPredictions(data);
-      // If we got items from backend
-      setIsLiveFromBackend(true);
     } catch {
-      setIsLiveFromBackend(false);
       setPredictions(DEMO_DEMAND_PREDICTIONS);
     } finally {
       setLoading(false);
@@ -94,29 +96,25 @@ export const DemandPredictionPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {/* Workflow Stepper Bar */}
+      {onNavigateTab && (
+        <WorkflowContextBar
+          stageNumber="STAGE 01 OF 06"
+          currentStage="Demand Prediction & Surplus Prevention"
+          purpose="Calculates explainable consumption forecast before cooking begins to minimize kitchen over-preparation."
+          nextStage={{ id: 'surplus', label: 'Surplus Inventory' }}
+          onNavigateTab={onNavigateTab}
+        />
+      )}
+
       {/* Header Context Banner */}
-      <div className="bg-foodloop-surface border border-foodloop-border rounded-xl p-5 shadow-xs">
+      <div className="bg-foodloop-surface dark:bg-foodloop-surfaceDark border border-foodloop-border dark:border-foodloop-borderDark rounded-xl p-5 shadow-xs transition-colors">
         <SectionHeader
           title="Demand Prediction & Surplus Prevention Engine"
           subtitle="Pre-cooking forecast calculated from student attendance registers, confirmed leave requests, and calendar indicators"
-          badge="STAGE 02: PREVENT"
+          badge="PLAN & PREVENT"
           actions={
             <div className="flex flex-wrap items-center gap-2 text-xs">
-              <span
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border font-mono ${
-                  isLiveFromBackend
-                    ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                    : 'bg-amber-50 text-amber-800 border-amber-200'
-                }`}
-              >
-                <Server className="w-3.5 h-3.5" />
-                <span>
-                  {isLiveFromBackend
-                    ? 'FastAPI Engine Active'
-                    : 'Demonstration / Fallback Cache'}
-                </span>
-              </span>
-
               <ActionButton
                 variant="outline"
                 size="sm"
@@ -124,7 +122,7 @@ export const DemandPredictionPage: React.FC = () => {
                 onClick={fetchPredictions}
                 loading={loading}
               >
-                Sync
+                Refresh
               </ActionButton>
 
               <ActionButton
@@ -140,8 +138,8 @@ export const DemandPredictionPage: React.FC = () => {
         />
 
         {/* Explainable Methodology Notice */}
-        <div className="mt-4 p-3.5 rounded-lg bg-blue-50/60 border border-blue-200 text-xs text-blue-900 flex items-start gap-2.5">
-          <Info className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+        <div className="mt-4 p-3.5 rounded-lg bg-blue-50/60 dark:bg-sky-950/20 border border-blue-200 dark:border-sky-800 text-xs text-blue-900 dark:text-sky-300 flex items-start gap-2.5">
+          <Info className="w-4 h-4 text-blue-600 dark:text-sky-400 shrink-0 mt-0.5" />
           <div className="leading-relaxed">
             <strong>Transparent Multi-Factor Model:</strong> Predictions are generated using historical meal attendance decay vectors adjusted for verifiable external inputs (e.g. portal mess leaves, campus events, and weather). Kitchen supervisors retain full manual override control over all batch sizes.
           </div>
